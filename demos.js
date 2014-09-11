@@ -66,6 +66,21 @@ var demos = [
         "This animates like a zillion things and looks kinda bad in the polyfill as a result.",
     ],
   },
+  {
+    name: 'Galaxy',
+    path: 'galaxy',
+    polyfill: ['/?polyfill'],
+    native: ['/'],
+  },
+  {
+    name: 'Playback Control',
+    path: 'playback-control',
+    polyfill: ['/?polyfill'],
+    native: ['/'],
+    nativeNote: [
+        "This demo requires Chrome 39 with the Experimental Web Platform Features flag enabled.",
+    ],
+  },
 
   //'components/web-animations-tools/wat-wat': 'wat',
   //'components/web-animations-tools/wat-bezier': 'Bezier',
