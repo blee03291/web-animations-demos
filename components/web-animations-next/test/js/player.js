@@ -82,6 +82,17 @@ suite('player', function() {
     assert.equal(p.startTime, 900);
     assert.equal(p.currentTime, 200);
   });
+  test('reversing after pausing', function() {
+    tick(90);
+    var p = document.body.animate([], 1000);
+    tick(100);
+    tick(600);
+    p.reverse();
+    tick(601);
+    tick(700);
+    assert.equal(p.startTime, 1100);
+    assert.equal(p.currentTime, 400);
+  });
   test('reversing after finishing works as expected', function() {
     tick(90);
     var p = document.body.animate([], 1000);
@@ -246,6 +257,9 @@ suite('player', function() {
     // getComputedStyle forces a tick.
     assert.equal(getComputedStyle(target).marginLeft, '0px');
     assert.deepEqual(document.timeline._players, []);
+    tick(120);
+    assert.equal(getComputedStyle(target).marginLeft, '0px');
+    assert.deepEqual(document.timeline._players, []);
     document.documentElement.removeChild(target);
   });
   test('startTime is set on first tick if timeline hasn\'t started', function() {
@@ -330,5 +344,81 @@ suite('player', function() {
     assert.equal(p.playState, 'running');
     tick(1001);
     assert.equal(p.playState, 'finished');
+  });
+  test('Play after cancel', function() {
+    var p = document.body.animate([], 1000);
+    assert.equal(p.playState, 'pending');
+    tick(0);
+    p.cancel();
+    assert.equal(p.playState, 'idle');
+    assert.equal(p.currentTime, null);
+    assert.ok(isNaN(p.startTime));
+    tick(1);
+    assert.equal(p.playState, 'idle');
+    assert.equal(p.currentTime, null);
+    assert.ok(isNaN(p.startTime));
+    p.play();
+    assert.equal(p.playState, 'pending');
+    assert.equal(p.currentTime, 0);
+    assert.ok(isNaN(p.startTime));
+    tick(10);
+    assert.equal(p.playState, 'running');
+    assert.equal(p.currentTime, 0);
+    assert.equal(p.startTime, 10);
+  });
+  test('Reverse after cancel', function() {
+    var p = document.body.animate([], 300);
+    tick(0);
+    p.cancel();
+    assert.equal(p.playState, 'idle');
+    assert.equal(p.currentTime, null);
+    assert.ok(isNaN(p.startTime));
+    tick(1);
+    p.reverse();
+    assert.equal(p.playState, 'pending');
+    assert.equal(p.currentTime, 300);
+    assert.ok(isNaN(p.startTime));
+    tick(100);
+    assert.equal(p.playState, 'running');
+    assert.equal(p.currentTime, 300);
+    assert.equal(p.startTime, 400);
+    tick(300);
+    assert.equal(p.playState, 'running');
+    assert.equal(p.currentTime, 100);
+    assert.equal(p.startTime, 400);
+    tick(400);
+    assert.equal(p.playState, 'finished');
+    assert.equal(p.currentTime, 0);
+    assert.equal(p.startTime, 400);
+  });
+  test('Finish after cancel', function() {
+    var p = document.body.animate([], 300);
+    tick(0);
+    p.cancel();
+    assert.equal(p.playState, 'idle');
+    assert.equal(p.currentTime, null);
+    assert.ok(isNaN(p.startTime));
+    tick(1);
+    p.finish();
+    assert.equal(p.playState, 'idle');
+    assert.equal(p.currentTime, null);
+    assert.ok(isNaN(p.startTime));
+    tick(2);
+    assert.equal(p.playState, 'idle');
+    assert.equal(p.currentTime, null);
+    assert.ok(isNaN(p.startTime));
+  });
+  test('Pause after cancel', function() {
+    var p = document.body.animate([], 300);
+    tick(0);
+    p.cancel();
+    assert.equal(p.playState, 'idle');
+    assert.equal(p.currentTime, null);
+    assert.ok(isNaN(p.startTime));
+    tick(1);
+    p.pause();
+    assert.equal(p.playState, 'idle');
+    assert.equal(p.currentTime, null);
+    assert.ok(isNaN(p.startTime));
   });
 });
