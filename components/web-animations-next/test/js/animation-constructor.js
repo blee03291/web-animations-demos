@@ -1,4 +1,9 @@
 suite('animation-constructor', function() {
+  setup(function() {
+    document.timeline.getAnimationPlayers().forEach(function(player) {
+      player.cancel();
+    });
+  });
 
   test('Playing an Animation makes a Player', function() {
     var animation = new Animation(document.body, [], 1000);
@@ -20,6 +25,8 @@ suite('animation-constructor', function() {
 
     var target1 = document.createElement('div');
     var target2 = document.createElement('div');
+    target1.style.position = 'absolute';
+    target2.style.position = 'absolute';
     document.body.appendChild(target1);
     document.body.appendChild(target2);
 
@@ -42,4 +49,32 @@ suite('animation-constructor', function() {
     assert.closeTo(leftAsNumber(target2), 15.25, 1);
   });
 
+  test('Timing is always converted to AnimationTimingInput', function() {
+    var target = document.createElement('div');
+    document.body.appendChild(target);
+
+    var keyframes = [{background: 'blue'}, {background: 'red'}];
+
+    var animation = new Animation(target, keyframes, 200);
+    assert.equal(animation.timing.duration, 200);
+
+    animation = new Animation(target, keyframes);
+    assert.isDefined(animation.timing);
+
+    animation = new Animation(target, keyframes, {duration: 200});
+    var group = new AnimationGroup([animation]);
+    assert.equal(group.timing.duration, 'auto');
+  });
+
+  test('Handle null target on Animation', function() {
+    var animation = new Animation(null, function(tf) {
+      // noop
+    }, 200);
+
+    var player = document.timeline.play(animation);
+    assert.isNotNull(player);
+    tick(50);
+    tick(150);
+    assert.equal(player.currentTime, 100);
+  });
 });

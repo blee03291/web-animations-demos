@@ -44,12 +44,16 @@
         for (var i = 0; i < 3; i++)
           x[i] = Math.round(clamp(x[i] / x[3]));
       }
-      x[3] = scope.numberToString(clamp(x[3]));
+      x[3] = scope.numberToString(scope.clamp(0, 1, x[3]));
       return 'rgba(' + x.join(',') + ')';
     }];
   }
 
-  scope.addPropertiesHandler(parseColor, mergeColors, ['color', 'backgroundColor']);
+  scope.addPropertiesHandler(parseColor, mergeColors,
+      ['background-color', 'border-bottom-color', 'border-left-color', 'border-right-color',
+       'border-top-color', 'color', 'outline-color', 'text-decoration-color']);
+  scope.consumeColor = scope.consumeParenthesised.bind(null, parseColor);
+  scope.mergeColors = mergeColors;
 
   if (WEB_ANIMATIONS_TESTING) {
     testing.parseColor = parseColor;

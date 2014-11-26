@@ -62,7 +62,11 @@
     return matchedUnits;
   }
 
-  function mergeDimensions(left, right) {
+  function mergeDimensionsNonNegative(left, right) {
+    return mergeDimensions(left, right, true);
+  }
+
+  function mergeDimensions(left, right, nonNegative) {
     var units = [], unit;
     for (unit in left)
       units.push(unit);
@@ -75,6 +79,9 @@
     right = units.map(function(unit) { return right[unit] || 0; });
     return [left, right, function(values) {
       var result = values.map(function(value, i) {
+        if (values.length == 1 && nonNegative) {
+          value = Math.max(value, 0);
+        }
         // Scientific notation (e.g. 1e2) is not yet widely supported by browser vendors.
         return scope.numberToString(value) + units[i];
       }).join(' + ');
@@ -89,10 +96,72 @@
 
   scope.parseLength = parseLength;
   scope.parseLengthOrPercent = parseLengthOrPercent;
+  scope.consumeLengthOrPercent = scope.consumeParenthesised.bind(null, parseLengthOrPercent);
   scope.parseAngle = parseAngle;
   scope.mergeDimensions = mergeDimensions;
 
-  scope.addPropertiesHandler(parseLengthOrPercent, mergeDimensions,
-      'left|right|top|bottom|width|height'.split('|'));
+  var consumeLength = scope.consumeParenthesised.bind(null, parseLength);
+  var consumeSizePair = scope.consumeRepeated.bind(undefined, consumeLength, /^/);
+  var consumeSizePairList = scope.consumeRepeated.bind(undefined, consumeSizePair, /^,/);
+  scope.consumeSizePairList = consumeSizePairList;
+
+  var parseSizePairList = function(input) {
+    var result = consumeSizePairList(input);
+    if (result && result[1] == '') {
+      return result[0];
+    }
+  };
+
+  var mergeNonNegativeSizePair = scope.mergeNestedRepeated.bind(undefined, mergeDimensionsNonNegative, ' ');
+  var mergeNonNegativeSizePairList = scope.mergeNestedRepeated.bind(undefined, mergeNonNegativeSizePair, ',');
+  scope.mergeNonNegativeSizePair = mergeNonNegativeSizePair;
+
+  scope.addPropertiesHandler(parseSizePairList, mergeNonNegativeSizePairList, [
+    'background-size'
+  ]);
+
+  scope.addPropertiesHandler(parseLengthOrPercent, mergeDimensionsNonNegative, [
+    'border-bottom-width',
+    'border-image-width',
+    'border-left-width',
+    'border-right-width',
+    'border-top-width',
+    'flex-basis',
+    'font-size',
+    'height',
+    'line-height',
+    'max-height',
+    'max-width',
+    'outline-width',
+    'width',
+  ]);
+
+  scope.addPropertiesHandler(parseLengthOrPercent, mergeDimensions, [
+    'border-bottom-left-radius',
+    'border-bottom-right-radius',
+    'border-top-left-radius',
+    'border-top-right-radius',
+    'bottom',
+    'left',
+    'letter-spacing',
+    'margin-bottom',
+    'margin-left',
+    'margin-right',
+    'margin-top',
+    'min-height',
+    'min-width',
+    'outline-offset',
+    'padding-bottom',
+    'padding-left',
+    'padding-right',
+    'padding-top',
+    'perspective',
+    'right',
+    'shape-margin',
+    'text-indent',
+    'top',
+    'vertical-align',
+    'word-spacing',
+  ]);
 
 })(webAnimationsMinifill, webAnimationsTesting);

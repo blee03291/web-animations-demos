@@ -13,28 +13,18 @@
 // limitations under the License.
 (function(shared, scope, testing) {
 
-  var element = document.createElement('div');
-  var originalAnimate = Element.prototype.animate;
-
-  Element.prototype.animate = function(effect, timing) {
-    if (typeof effect == 'function') {
-      var player = new scope.Player(originalAnimate.call(element, [], timing));
-      bind(player, this, effect, timing);
-      return player;
-    }
-    return new scope.Player(originalAnimate.call(this, effect, timing));
-  };
+  var nullTarget = document.createElement('div');
 
   var sequenceNumber = 0;
-  function bind(player, target, effect, timing) {
-    var animation = 'fixme';
+  scope.bindPlayerForCustomEffect = function(player) {
+    var target = player.source.target;
+    var effect = player.source.effect;
+    var timing = player.source.timing;
     var last = undefined;
     timing = shared.normalizeTimingInput(timing);
     var callback = function() {
-      var t = callback._player ? callback._player.currentTime : NaN;
-      if (isNaN(t)) {
-        t = null;
-      } else {
+      var t = callback._player ? callback._player.currentTime : null;
+      if (t !== null) {
         t = shared.calculateTimeFraction(shared.calculateActiveDuration(timing), t, timing);
         if (isNaN(t))
           t = null;
@@ -42,7 +32,7 @@
       // FIXME: There are actually more conditions under which the effect
       // should be called.
       if (t !== last)
-        effect(t, target, animation);
+        effect(t, target, player.source);
       last = t;
     };
 
@@ -51,7 +41,7 @@
     callback._sequenceNumber = sequenceNumber++;
     player._callback = callback;
     register(callback);
-  }
+  };
 
   var callbacks = [];
   var ticking = false;

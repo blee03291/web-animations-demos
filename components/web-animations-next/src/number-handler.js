@@ -31,6 +31,19 @@
     return [left, right, numberToString];
   }
 
+  // FIXME: This should probably go in it's own handler.
+  function mergeFlex(left, right) {
+    if (left == 0)
+      return;
+    return clampedMergeNumbers(0, Infinity)(left, right);
+  }
+
+  function mergePositiveIntegers(left, right) {
+    return [left, right, function(x) {
+      return Math.round(clamp(1, Infinity, x));
+    }];
+  }
+
   function clampedMergeNumbers(min, max) {
     return function(left, right) {
       return [left, right, function(x) {
@@ -39,7 +52,18 @@
     };
   }
 
-  scope.addPropertiesHandler(parseNumber, clampedMergeNumbers(0, 1), ['opacity']);
+  function round(left, right) {
+    return [left, right, Math.round];
+  }
+
+  scope.clamp = clamp;
+  scope.addPropertiesHandler(parseNumber, clampedMergeNumbers(0, Infinity), ['border-image-width', 'line-height']);
+  scope.addPropertiesHandler(parseNumber, clampedMergeNumbers(0, 1), ['opacity', 'shape-image-threshold']);
+  scope.addPropertiesHandler(parseNumber, clampedMergeNumbers(0.01, Infinity), ['zoom']);
+  scope.addPropertiesHandler(parseNumber, mergeFlex, ['flex-grow', 'flex-shrink']);
+  scope.addPropertiesHandler(parseNumber, mergeNumbers, ['zoom']);
+  scope.addPropertiesHandler(parseNumber, mergePositiveIntegers, ['orphans', 'widows']);
+  scope.addPropertiesHandler(parseNumber, round, ['z-index']);
 
   scope.parseNumber = parseNumber;
   scope.mergeNumbers = mergeNumbers;

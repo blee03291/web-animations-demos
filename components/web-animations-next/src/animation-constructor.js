@@ -26,11 +26,11 @@
     getFrames: function() { return this._frames; }
   };
 
-  window.Animation = function(target, effect, timingInput) {
+  scope.Animation = function(target, effect, timingInput) {
     this.target = target;
     // TODO: Make modifications to specified update the underlying player
     this._timing = shared.normalizeTimingInput(timingInput);
-    this.timing = timingInput;
+    this.timing = shared.makeTiming(timingInput);
     // TODO: Make this a live object - will need to separate normalization of
     // keyframes into a shared module.
     if (typeof effect == 'function')
@@ -38,14 +38,34 @@
     else
       this.effect = new KeyframeEffect(effect);
     this._effect = effect;
-    this._internalPlayer = null;
     this.activeDuration = shared.calculateActiveDuration(this._timing);
     return this;
   };
 
+  var originalElementAnimate = Element.prototype.animate;
+  Element.prototype.animate = function(effect, timing) {
+    return scope.timeline.play(new scope.Animation(this, effect, timing));
+  };
+
+  var nullTarget = document.createElement('div');
+  scope.newUnderlyingPlayerForAnimation = function(animation) {
+    var target = animation.target || nullTarget;
+    var effect = animation._effect;
+    if (typeof effect == 'function') {
+      effect = [];
+    }
+    return originalElementAnimate.apply(target, [effect, animation.timing]);
+  };
+
+  scope.bindPlayerForAnimation = function(player) {
+    if (player.source && typeof player.source.effect == 'function') {
+      scope.bindPlayerForCustomEffect(player);
+    }
+  };
+
   var pendingGroups = [];
   scope.awaitStartTime = function(groupPlayer) {
-    if (!isNaN(groupPlayer.startTime) || !groupPlayer._isGroup)
+    if (groupPlayer.startTime !== null || !groupPlayer._isGroup)
       return;
     if (pendingGroups.length == 0) {
       requestAnimationFrame(updatePendingGroups);
@@ -74,7 +94,7 @@
 
   // TODO: Call into this less frequently.
   scope.Player.prototype._updateChildren = function() {
-    if (isNaN(this.startTime) || !this.source || !this._isGroup)
+    if (this.startTime === null || !this.source || !this._isGroup)
       return;
     var offset = this.source._timing.delay;
     for (var i = 0; i < this.source.children.length; i++) {
@@ -103,39 +123,11 @@
     }
   };
 
-  window.document.timeline.play = function(source) {
-    // TODO: Handle effect callback.
-    if (source instanceof window.Animation) {
-      // TODO: Handle null target.
-      var player = source.target.animate(source._effect, source.timing);
-      player.source = source;
-      source.player = player;
-      return player;
-    }
-    // FIXME: Move this code out of this module
-    if (source instanceof window.AnimationSequence || source instanceof window.AnimationGroup) {
-      var ticker = function(tf) {
-        if (!player.source)
-          return;
-        if (tf == null) {
-          player._removePlayers();
-          return;
-        }
-        if (isNaN(player.startTime))
-          return;
-
-        player._updateChildren();
-      };
-
-
-      // TODO: Use a single static element rather than one per group.
-      var player = document.createElement('div').animate(ticker, source._timing);
-      player.source = source;
-      player._isGroup = true;
-      source.player = player;
-      scope.awaitStartTime(player);
-      return player;
-    }
+  window.Animation = scope.Animation;
+  window.Element.prototype.getAnimationPlayers = function() {
+    return document.timeline.getAnimationPlayers().filter(function(player) {
+      return player.source !== null && player.source.target == this;
+    }.bind(this));
   };
 
   scope.groupChildDuration = groupChildDuration;

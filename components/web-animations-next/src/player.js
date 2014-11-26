@@ -12,7 +12,7 @@
 //     See the License for the specific language governing permissions and
 // limitations under the License.
 
-(function(shared, scope, testing) {
+(function(scope, testing) {
 
   var sequenceNumber = 0;
 
@@ -33,7 +33,7 @@
   scope.Player = function(source) {
     this._sequenceNumber = sequenceNumber++;
     this._currentTime = 0;
-    this._startTime = NaN;
+    this._startTime = null;
     this.paused = false;
     this._playbackRate = 1;
     this._inTimeline = true;
@@ -42,7 +42,8 @@
     this._finishHandlers = [];
     this._source = source;
     this._inEffect = this._source._update(0);
-    this._idle = false;
+    this._idle = true;
+    this._currentTimePending = false;
   };
 
   scope.Player.prototype = {
@@ -50,7 +51,7 @@
       this._inEffect = this._source._update(this.currentTime);
       if (!this._inTimeline && (this._inEffect || !this._finishedFlag)) {
         this._inTimeline = true;
-        document.timeline._players.push(this);
+        scope.timeline._players.push(this);
       }
     },
     _tickCurrentTime: function(newTime, ignoreLimit) {
@@ -62,16 +63,19 @@
       }
     },
     get currentTime() {
-      if (this._idle)
+      if (this._idle || this._currentTimePending)
         return null;
       return this._currentTime;
     },
     set currentTime(newTime) {
-      if (scope.restart())
-        this._startTime = NaN;
-      if (!this.paused && !isNaN(this._startTime)) {
+      newTime = +newTime;
+      if (isNaN(newTime))
+        return;
+      scope.restart();
+      if (!this.paused && this._startTime != null) {
         this._startTime = this._timeline.currentTime - newTime / this._playbackRate;
       }
+      this._currentTimePending = false;
       if (this._currentTime == newTime)
         return;
       this._tickCurrentTime(newTime, true);
@@ -81,6 +85,9 @@
       return this._startTime;
     },
     set startTime(newTime) {
+      newTime = +newTime;
+      if (isNaN(newTime))
+        return;
       if (this.paused || this._idle)
         return;
       this._startTime = newTime;
@@ -96,7 +103,7 @@
     get playState() {
       if (this._idle)
         return 'idle';
-      if (isNaN(this._startTime) && !this.paused && this.playbackRate != 0)
+      if ((this._startTime == null && !this.paused && this.playbackRate != 0) || this._currentTimePending)
         return 'pending';
       if (this.paused)
         return 'paused';
@@ -108,34 +115,37 @@
       this.paused = false;
       if (this.finished || this._idle) {
         this._currentTime = this._playbackRate > 0 ? 0 : this._totalDuration;
+        this._startTime = null;
         scope.invalidateEffects();
       }
       this._finishedFlag = false;
-      if (!scope.restart()) {
-        this._startTime = this._timeline.currentTime - this._currentTime / this._playbackRate;
-      }
-      else
-        this._startTime = NaN;
+      scope.restart();
       this._idle = false;
       this._ensureAlive();
     },
     pause: function() {
+      if (!this.finished && !this.paused && !this._idle) {
+        this._currentTimePending = true;
+      }
+      this._startTime = null;
       this.paused = true;
-      this._startTime = NaN;
     },
     finish: function() {
       if (this._idle)
         return;
       this.currentTime = this._playbackRate > 0 ? this._totalDuration : 0;
+      this._startTime = this._totalDuration - this.currentTime;
+      this._currentTimePending = false;
     },
     cancel: function() {
       this._inEffect = false;
       this._idle = true;
       this.currentTime = 0;
-      this._startTime = NaN;
+      this._startTime = null;
     },
     reverse: function() {
       this._playbackRate *= -1;
+      this._startTime = null;
       this.play();
     },
     addEventListener: function(type, handler) {
@@ -164,14 +174,14 @@
     },
     _tick: function(timelineTime) {
       if (!this._idle && !this.paused) {
-        if (isNaN(this._startTime))
+        if (this._startTime == null)
           this.startTime = timelineTime - this._currentTime / this.playbackRate;
         else if (!this.finished)
           this._tickCurrentTime((timelineTime - this._startTime) * this.playbackRate);
       }
 
+      this._currentTimePending = false;
       this._fireEvents(timelineTime);
-
       return !this._idle && (this._inEffect || !this._finishedFlag);
     },
   };
@@ -180,4 +190,4 @@
     testing.Player = scope.Player;
   }
 
-})(webAnimationsShared, webAnimationsMinifill, webAnimationsTesting);
+})(webAnimationsMinifill, webAnimationsTesting);

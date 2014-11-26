@@ -14,24 +14,12 @@
 
 (function(scope, testing) {
 
-  var aliased = {};
-
-  ['webkitTransform', 'msTransform', 'transform'].forEach(function(candidate) {
-    if (candidate in document.documentElement.style) {
-      aliased['transform'] = candidate;
-    }
-  });
-
-  function propertyName(property) {
-    return aliased[property] || property;
-  }
-
   scope.apply = function(element, property, value) {
-    element.style[propertyName(property)] = value;
+    element.style[scope.propertyName(property)] = value;
   };
 
   scope.clear = function(element, property) {
-    element.style[propertyName(property)] = '';
+    element.style[scope.propertyName(property)] = '';
   };
 
 })(webAnimationsMinifill, webAnimationsTesting);
